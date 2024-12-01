@@ -1,4 +1,4 @@
-# AdventOfCode23
+# AdventOfCode24
 
 **Description**
 
