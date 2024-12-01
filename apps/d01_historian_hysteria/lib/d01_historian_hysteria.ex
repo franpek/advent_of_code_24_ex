@@ -29,7 +29,7 @@ defmodule HistorianHysteria do
 
   defp split_in_two(list), do: split_in_two(list, [], [])
   defp split_in_two([l, r | tl], [], []), do: split_in_two( tl, [l], [r])
-  defp split_in_two([l, r | []], left, right), do: [Enum.sort([l | left]), Enum.sort([r | right])]
+  defp split_in_two([l, r | []], left, right), do: [[l | left], [r | right]]
   defp split_in_two([l, r | tl], left, right), do: split_in_two( tl, [l | left], [r | right])
 
   @doc """
