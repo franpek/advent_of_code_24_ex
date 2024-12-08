@@ -12,7 +12,11 @@ defmodule ResonantCollinearity do
       14
 
       iex> ResonantCollinearity.antinode_locations("files/sample.txt")
-      x
+      256
+
+      # Second part
+      iex> ResonantCollinearity.antinode_locations("files/sample.txt")
+      977 # Wrong value
 
   """
   def antinode_locations(path) do
@@ -27,38 +31,68 @@ defmodule ResonantCollinearity do
     |> Enum.sort
     |> Enum.group_by(fn {val, _, _} -> val end)
 
-    antinodes = antennas
-    |> Enum.map(fn {_frequency, antennas} -> get_antinodes_from_antennas(antennas) end)
-    |> Enum.map(fn antinodes_by_frequency -> antinodes_by_frequency |> List.flatten end)
-
     max_x = matrix |> hd |> (fn row -> Enum.count(row) end).()
     max_y = matrix |> (fn matrix -> Enum.count(matrix) end).()
 
-    antinodes
-    |> List.flatten
-    |> IO.inspect
-    |> Enum.filter( fn antinodes_by_frequency -> is_in_matrix(max_x, max_y, antinodes_by_frequency) end )
-    |> Enum.uniq
-    |> Enum.count
+    antinodes = antennas
+    |> Enum.map(fn {_frequency, antennas} -> get_antinodes_from_antennas(antennas, max_x, max_y) end)
+
+    antinodes |> List.flatten |> Enum.uniq |> Enum.count
   end
 
-  defp get_antinodes_from_antennas(antennas, antinodes \\ [])
-  defp get_antinodes_from_antennas([], _), do: []
-  defp get_antinodes_from_antennas([current_item | antennas_left], antinodes) do
+  defp get_antinodes_from_antennas(antennas, max_x, max_y, antinodes \\ [])
+  defp get_antinodes_from_antennas([], _max_x, _max_y, _), do: []
+  defp get_antinodes_from_antennas([current_item | antennas_left], max_x, max_y, antinodes) do
 
     current_item_combinations = antennas_left
-    |> Enum.map(fn combination -> get_antinodes_from_antennas_pair(current_item, combination) end)
+    |> Enum.map(fn combination -> get_antinodes_from_antennas_pair(current_item, combination, max_x, max_y) end)
 
-    [current_item_combinations | get_antinodes_from_antennas(antennas_left, antinodes)]
+    [current_item_combinations | get_antinodes_from_antennas(antennas_left, max_x, max_y, antinodes)]
   end
 
-  def get_antinodes_from_antennas_pair({_val1, x1, y1},{_val2, x2, y2}) do
-    left_node = {2*x1-x2, 2*y1-y2}
-    right_node = {2*x2-x1, 2*y2-y1}
-    [left_node, right_node]
+  def get_antinodes_from_antennas_pair(left_node = {_val1, x1, y1}, right_node = {_val2, x2, y2}, max_x, max_y) do
+
+    possible_next_left_node = {2*x1-x2, 2*y1-y2}
+
+    left_antinodes =
+      if is_in_matrix(possible_next_left_node, max_x, max_y) do
+        [
+          {x1, y1},
+          possible_next_left_node,
+          get_extended_antinodes(possible_next_left_node, {x1 - x2, y1 - y2}, max_x, max_y)
+        ]
+      else
+        []
+    end
+
+    possible_next_right_node = {2*x2-x1, 2*y2-y1}
+
+    right_antinodes =
+      if is_in_matrix(possible_next_right_node, max_x, max_y) do
+        [
+          {x2, y2},
+          possible_next_right_node,
+          get_extended_antinodes(possible_next_right_node, {x2 - x1, y2 - y1}, max_x, max_y)
+        ]
+      else
+        []
+      end
+
+    [left_antinodes, right_antinodes]
   end
 
-  def is_in_matrix(max_x, max_y, _node = {x,y}) when x >= 0 and y >= 0 and x < max_x and y < max_y, do: true
-  def is_in_matrix(_max_x, _max_y, _node), do: false
+  def get_extended_antinodes(_antinode = {x,y}, next_node_length = {x_length, y_length}, max_x, max_y) do
+
+    next_node = {x+x_length, y+y_length}
+
+    if is_in_matrix(next_node, max_x, max_y) do
+      [next_node | get_extended_antinodes(next_node, next_node_length, max_x, max_y)]
+    else
+      []
+    end
+  end
+
+  def is_in_matrix(_node = {x,y}, max_x, max_y) when x >= 0 and y >= 0 and x < max_x and y < max_y, do: true
+  def is_in_matrix(_node, _max_x, _max_y), do: false
 
 end
